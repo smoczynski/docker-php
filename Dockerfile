@@ -126,4 +126,8 @@ RUN sed -i "s|upload_max_filesize.*|upload_max_filesize = 128M|" /usr/local/etc/
     sed -i "s|max_execution_time.*|max_execution_time = 300|" /usr/local/etc/php/php.ini && \
     sed -i "s|memory_limit.*|memory_limit = 3048M|" /usr/local/etc/php/php.ini
 
+# PREPARE FILE FOR LOGS
+RUN mkdir -p /var/log/php-fpm
+RUN touch /var/log/php-fpm/access.log
+
 
