@@ -116,3 +116,14 @@ RUN apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /v
 # COPY PHP.INI SUITABLE FOR DEVELOPMENT
 COPY php.ini.development /usr/local/etc/php/php.ini
 
+# CREATE PHP.INI FOR CLI AND TWEAK IT
+RUN cp /usr/local/etc/php/php.ini /usr/local/etc/php/php-cli.ini && \
+    sed -i "s|memory_limit.*|memory_limit = -1|" /usr/local/etc/php/php-cli.ini
+
+# TWEAK MAIN PHP.INI CONFIG FILE
+RUN sed -i "s|upload_max_filesize.*|upload_max_filesize = 128M|" /usr/local/etc/php/php.ini && \
+    sed -i "s|post_max_size.*|post_max_size = 128M|" /usr/local/etc/php/php.ini && \
+    sed -i "s|max_execution_time.*|max_execution_time = 300|" /usr/local/etc/php/php.ini && \
+    sed -i "s|memory_limit.*|memory_limit = 3048M|" /usr/local/etc/php/php.ini
+
+
