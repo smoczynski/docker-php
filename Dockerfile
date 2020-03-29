@@ -27,7 +27,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     sudo \
     procps \
-    iproute2
+    iproute2 \
+    supervisor \
+    cron
 
 # INSTALL PHP EXTENSIONS VIA docker-php-ext-install SCRIPT
 RUN docker-php-ext-install \
@@ -62,8 +64,8 @@ RUN pecl install xdebug-beta
 RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.remote_enable=1\nxdebug.remote_connect_back=1\nxdebug.remote_autostart=1\nxdebug.remote_host=" >> /usr/local/etc/php/conf.d/xdebug.ini'
 
 # INSTALL XDEBUG AND ADD FUNCTIONS TO TURN ON/OFF XDEBUG
-COPY xoff.sh /usr/bin/xoff
-COPY xon.sh /usr/bin/xon
+COPY conf/xoff.sh /usr/bin/xoff
+COPY conf/xon.sh /usr/bin/xon
 
 RUN set -x \
     && chmod +x /usr/bin/xoff \
@@ -114,7 +116,7 @@ RUN curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony && chmod a
 RUN apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # COPY PHP.INI SUITABLE FOR DEVELOPMENT
-COPY php.ini.development /usr/local/etc/php/php.ini
+COPY conf/php.ini.development /usr/local/etc/php/php.ini
 
 # CREATE PHP.INI FOR CLI AND TWEAK IT
 RUN cp /usr/local/etc/php/php.ini /usr/local/etc/php/php-cli.ini && \
@@ -130,4 +132,27 @@ RUN sed -i "s|upload_max_filesize.*|upload_max_filesize = 128M|" /usr/local/etc/
 RUN mkdir -p /var/log/php-fpm
 RUN touch /var/log/php-fpm/access.log
 
+# PREPARE USER www-data WITH PROPER ID TO SOLVE FILE PERMISSION ISSUE ON IDE LEVEL
+# local user need to have id 1000, in other way this proces need to rearanged on project level
 
+ENV HOME_DIR=/var/www
+ENV USER_LOGIN=www-data
+ENV USER_ID=1000
+
+RUN usermod -u $USER_ID $USER_LOGIN && \
+    groupmod -g $USER_ID $USER_LOGIN && \
+    usermod -aG sudo $USER_LOGIN && \
+    echo "$USER_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# SYMFONY TWEAK
+RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
+
+# PRINT ENV VARS WHICH CAN BE USED IN CRON PROCESS
+RUN printenv | sed 's/^\([^=]*\)=\(.*\)$/export \1=\"\2\"/g' > $HOME_DIR/.env
+
+# COPY SUPERVISOR CONFIGURATION
+COPY conf/supervisord.conf /etc/supervisor/supervisord.conf
+RUN chmod 0644 /etc/supervisor/supervisord.conf
+
+# SET www-data AS AN OWNER OF FILES
+RUN chown $USER_LOGIN:$USER_LOGIN $HOME_DIR /usr/local/composer -R
