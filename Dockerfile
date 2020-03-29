@@ -147,9 +147,6 @@ RUN usermod -u $USER_ID $USER_LOGIN && \
 # SYMFONY TWEAK
 RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
 
-# PRINT ENV VARS WHICH CAN BE USED IN CRON PROCESS
-RUN printenv | sed 's/^\([^=]*\)=\(.*\)$/export \1=\"\2\"/g' > $HOME_DIR/.env
-
 # COPY SUPERVISOR CONFIGURATION
 COPY conf/supervisord.conf /etc/supervisor/supervisord.conf
 RUN chmod 0644 /etc/supervisor/supervisord.conf
