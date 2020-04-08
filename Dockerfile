@@ -126,6 +126,7 @@ RUN cp /usr/local/etc/php/php.ini /usr/local/etc/php/php-cli.ini && \
 RUN sed -i "s|upload_max_filesize.*|upload_max_filesize = 128M|" /usr/local/etc/php/php.ini && \
     sed -i "s|post_max_size.*|post_max_size = 128M|" /usr/local/etc/php/php.ini && \
     sed -i "s|max_execution_time.*|max_execution_time = 300|" /usr/local/etc/php/php.ini && \
+    sed -i "s|expose_php.*|expose_php = off|" /usr/local/etc/php/php.ini && \
     sed -i "s|memory_limit.*|memory_limit = 3048M|" /usr/local/etc/php/php.ini
 
 # PREPARE FILE FOR LOGS
