@@ -1,4 +1,4 @@
-FROM php:7.4.3-fpm
+FROM php:8.0.6-fpm
 
 MAINTAINER Radek Smoczynski <radek.smoczynski@gmail.com>
 
@@ -60,12 +60,13 @@ RUN docker-php-ext-install \
     zip
 
 # INSTALL XDEBUG
-RUN pecl install xdebug-beta
-RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.remote_enable=1\nxdebug.remote_connect_back=1\nxdebug.remote_autostart=1\nxdebug.remote_host=" >> /usr/local/etc/php/conf.d/xdebug.ini'
+RUN pecl install xdebug
 
 # INSTALL XDEBUG AND ADD FUNCTIONS TO TURN ON/OFF XDEBUG
 COPY conf/xoff.sh /usr/bin/xoff
 COPY conf/xon.sh /usr/bin/xon
+
+COPY conf/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 RUN set -x \
     && chmod +x /usr/bin/xoff \
@@ -78,7 +79,7 @@ RUN apt-get install -y wget gnupg
 RUN wget -q -O - https://packages.blackfire.io/gpg.key | apt-key add - \
     && echo "deb http://packages.blackfire.io/debian any main" | tee /etc/apt/sources.list.d/blackfire.list \
     && apt-get update \
-    && apt-get install -y blackfire-agent
+    && apt-get install -y blackfire-agent blackfire-php
 
 # INSTALL MONGODB
 RUN pecl install mongodb
@@ -94,20 +95,6 @@ RUN echo "export COMPOSER_HOME=/usr/local/composer" >> /etc/bash.bashrc
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER 1
-RUN composer global require "hirak/prestissimo:^0.3" --prefer-dist --no-progress --no-suggest --classmap-authoritative
-
-# INSTALL STATIC CODE ANALYSIS, CODE METRICS AND SIMILAR TOOLS
-RUN composer global require \
-    # PHPCS
-    squizlabs/php_codesniffer=3.* \
-    # PHPCPD
-    sebastian/phpcpd=5.* \
-    # PHPLOC
-    phploc/phploc=6.* \
-    # PDEPEND
-    pdepend/pdepend=2.* \
-    # PHPMD
-    phpmd/phpmd=@stable
 
 # DOWNLOAD SYMFONY INSTALLER
 RUN curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony && chmod a+x /usr/local/bin/symfony
