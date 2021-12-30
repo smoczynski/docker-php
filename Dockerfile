@@ -61,7 +61,7 @@ RUN docker-php-ext-install \
 
 # INSTALL XDEBUG
 RUN pecl install xdebug-beta
-RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.remote_enable=1\nxdebug.remote_connect_back=1\nxdebug.remote_autostart=1\nxdebug.remote_host=" >> /usr/local/etc/php/conf.d/xdebug.ini'
+RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.client_host=\nxdebug.start_with_request=yes\nxdebug.mode=develop,debug" >> /usr/local/etc/php/conf.d/xdebug.ini'
 
 # INSTALL XDEBUG AND ADD FUNCTIONS TO TURN ON/OFF XDEBUG
 COPY xoff.sh /usr/bin/xoff
@@ -127,9 +127,8 @@ RUN usermod -u $USER_ID $USER_LOGIN && \
     usermod -aG sudo $USER_LOGIN && \
     echo "$USER_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
+RUN chown $USER_LOGIN:$USER_LOGIN /usr/local/composer -R
+
 # SYMFONY TWEAK
 RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
 
-# COPY SUPERVISOR CONFIGURATION
-COPY conf/supervisord.conf /etc/supervisor/supervisord.conf
-RUN chmod 0644 /etc/supervisor/supervisord.conf
