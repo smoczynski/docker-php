@@ -132,3 +132,12 @@ RUN chown $USER_LOGIN:$USER_LOGIN /usr/local/composer -R
 # SYMFONY TWEAK
 RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
 
+# for CI test purposes
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+
+# INSTALL LIBRARY FOR PDF GENERATION
+RUN apt-get update && \
+    apt-get install -y \
+    yarn && \
+    apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
