@@ -118,4 +118,18 @@ RUN sed -i "s|upload_max_filesize.*|upload_max_filesize = 128M|" /usr/local/etc/
 RUN mkdir -p /var/log/php-fpm
 RUN touch /var/log/php-fpm/access.log
 
+ENV HOME_DIR=/var/www
+ENV USER_LOGIN=www-data
+ENV USER_ID=1000
 
+RUN usermod -u $USER_ID $USER_LOGIN && \
+    groupmod -g $USER_ID $USER_LOGIN && \
+    usermod -aG sudo $USER_LOGIN && \
+    echo "$USER_LOGIN ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# SYMFONY TWEAK
+RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
+
+# COPY SUPERVISOR CONFIGURATION
+COPY conf/supervisord.conf /etc/supervisor/supervisord.conf
+RUN chmod 0644 /etc/supervisor/supervisord.conf
