@@ -1,4 +1,4 @@
-FROM php:7.4.3-fpm
+FROM php:8.1-fpm
 
 MAINTAINER Radek Smoczynski <radek.smoczynski@gmail.com>
 
@@ -27,7 +27,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     sudo \
     procps \
-    iproute2
+    iproute2 \
+    cron \
+    supervisor
 
 # INSTALL PHP EXTENSIONS VIA docker-php-ext-install SCRIPT
 RUN docker-php-ext-install \
@@ -92,20 +94,6 @@ RUN echo "export COMPOSER_HOME=/usr/local/composer" >> /etc/bash.bashrc
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER 1
-RUN composer global require "hirak/prestissimo:^0.3" --prefer-dist --no-progress --no-suggest --classmap-authoritative
-
-# INSTALL STATIC CODE ANALYSIS, CODE METRICS AND SIMILAR TOOLS
-RUN composer global require \
-    # PHPCS
-    squizlabs/php_codesniffer=3.* \
-    # PHPCPD
-    sebastian/phpcpd=5.* \
-    # PHPLOC
-    phploc/phploc=6.* \
-    # PDEPEND
-    pdepend/pdepend=2.* \
-    # PHPMD
-    phpmd/phpmd=@stable
 
 # DOWNLOAD SYMFONY INSTALLER
 RUN curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony && chmod a+x /usr/local/bin/symfony
