@@ -136,8 +136,20 @@ RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
 RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 
+
+#ENV NODE_VERSION=13.7.0
+#ENV YARN_VERSION=3.0.0
+
 # INSTALL LIBRARY FOR PDF GENERATION
 RUN apt-get update && \
     apt-get install -y \
     yarn && \
     apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+#COPY package.json /opt/app/package.json
+#COPY yarn.lock /opt/app/yarn.lock
+#
+#WORKDIR /opt/app
+#
+#RUN yarn
+
