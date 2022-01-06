@@ -95,7 +95,8 @@ RUN echo "export COMPOSER_HOME=/usr/local/composer" >> /etc/bash.bashrc
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
 # DOWNLOAD SYMFONY INSTALLER
-RUN curl -LsS https://symfony.com/installer -o /usr/local/bin/symfony && chmod a+x /usr/local/bin/symfony
+RUN wget https://get.symfony.com/cli/installer -O - | bash
+RUN mv /root/.symfony/bin/symfony /usr/local/bin/symfony
 
 # CLEAN APT AND TMP
 RUN apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
