@@ -70,7 +70,6 @@ COPY xon.sh /usr/bin/xon
 RUN set -x \
     && chmod +x /usr/bin/xoff \
     && chmod +x /usr/bin/xon \
-    && mv /usr/local/etc/php/conf.d/xdebug.ini /usr/local/etc/php/conf.d/xdebug.off \
     && echo 'PS1="[\$(test -e /usr/local/etc/php/conf.d/xdebug.off && echo XOFF || echo XON)] $HC$FYEL[ $FBLE${debian_chroot:+($debian_chroot)}\u$FYEL: $FBLE\w $FYEL]\\$ $RS"' | tee /etc/bash.bashrc /etc/skel/.bashrc;
 
 # Install blackfire extension
@@ -152,4 +151,5 @@ RUN apt-get update && \
 #WORKDIR /opt/app
 #
 #RUN yarn
+
 
