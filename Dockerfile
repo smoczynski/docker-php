@@ -29,7 +29,18 @@ RUN apt-get update && apt-get install -y \
     procps \
     iproute2 \
     cron \
-    supervisor
+    supervisor \
+    fonts-liberation \
+    libasound2 \
+    libnspr4 \
+    libnss3 \
+    wget \
+    gnupg \
+    yarn \
+    libgbm1 \
+    xdg-utils \
+    wkhtmltopdf && \
+    apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # INSTALL PHP EXTENSIONS VIA docker-php-ext-install SCRIPT
 RUN docker-php-ext-install \
@@ -59,6 +70,17 @@ RUN docker-php-ext-install \
     xsl \
     zip
 
+# instaling strict 0.12.4 wkhtmltopdf version, 0.12.5 does not exist in github, 0.12.6 break styles in certificates
+RUN OLD_DIR=$(pwd) && \
+    mkdir wkhtmltopdf-temp && \
+    cd wkhtmltopdf-temp && \
+    wget https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.4/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz && \
+    tar -xf wk* && \
+    cp wkhtmltox/bin/wkhtmltopdf $(which wkhtmltopdf) && \
+    cp wkhtmltox/bin/wkhtmltoimage $(which wkhtmltoimage) && \
+    cd $OLD_DIR && \
+    rm -rf wkhtmltopdf-temp
+
 # INSTALL XDEBUG
 RUN pecl install xdebug-beta
 RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.client_host=\nxdebug.start_with_request=yes\nxdebug.mode=develop,debug" >> /usr/local/etc/php/conf.d/xdebug.ini'
@@ -73,11 +95,11 @@ RUN set -x \
     && echo 'PS1="[\$(test -e /usr/local/etc/php/conf.d/xdebug.off && echo XOFF || echo XON)] $HC$FYEL[ $FBLE${debian_chroot:+($debian_chroot)}\u$FYEL: $FBLE\w $FYEL]\\$ $RS"' | tee /etc/bash.bashrc /etc/skel/.bashrc;
 
 # Install blackfire extension
-RUN apt-get install -y wget gnupg
 RUN wget -q -O - https://packages.blackfire.io/gpg.key | apt-key add - \
     && echo "deb http://packages.blackfire.io/debian any main" | tee /etc/apt/sources.list.d/blackfire.list \
     && apt-get update \
-    && apt-get install -y blackfire-agent
+    && apt-get install -y blackfire-agent \
+    && apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # INSTALL MONGODB
 RUN pecl install mongodb
@@ -97,9 +119,6 @@ ENV COMPOSER_ALLOW_SUPERUSER 1
 # DOWNLOAD SYMFONY INSTALLER
 RUN wget https://get.symfony.com/cli/installer -O - | bash
 RUN mv /root/.symfony/bin/symfony /usr/local/bin/symfony
-
-# CLEAN APT AND TMP
-RUN apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # COPY PHP.INI SUITABLE FOR DEVELOPMENT
 COPY php.ini.development /usr/local/etc/php/php.ini
@@ -141,7 +160,7 @@ RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/so
 RUN apt-get update && \
     apt-get install -y \
     yarn && \
-    apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    apt-get clean -y && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # install chrome
 COPY lib/google-chrome-stable_90.0.4430.72-1_amd64.deb /tmp/google-chrome-stable_90.0.4430.72-1_amd64.deb
