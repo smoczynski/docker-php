@@ -2,6 +2,9 @@ FROM php:8.1-fpm
 
 MAINTAINER Radek Smoczynski <radek.smoczynski@gmail.com>
 
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
 # INSTALL ESSENTIALS LIBS TO COMPILE PHP EXTENSTIONS
 RUN apt-get update && apt-get install -y \
     # for zip ext
@@ -40,6 +43,7 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     xdg-utils \
     wkhtmltopdf && \
+    postgresql-15  && \
     apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # INSTALL PHP EXTENSIONS VIA docker-php-ext-install SCRIPT
