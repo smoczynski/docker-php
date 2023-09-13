@@ -2,7 +2,8 @@ FROM php:8.1-fpm
 
 MAINTAINER Radek Smoczynski <radek.smoczynski@gmail.com>
 
-# INSTALL ESSENTIALS LIBS TO COMPILE PHP EXTENSTIONS
+RUN echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/debian.list
+
 RUN apt-get update && apt-get install -y \
     # for zip ext
     zlib1g-dev libzip-dev\
@@ -29,7 +30,27 @@ RUN apt-get update && apt-get install -y \
     procps \
     iproute2 \
     cron \
-    supervisor
+    wget \
+    gnupg \
+    x11vnc \
+    xvfb \
+    fluxbox \
+    wmctrl \
+    fonts-liberation \
+    libasound2 \
+    libnspr4 \
+    libnss3 \
+    xdg-utils \
+    # google chrome dep start
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    # google chrome dep end
+    wkhtmltopdf \
+    libxkbcommon0 \
+    supervisor && \
+    apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # INSTALL PHP EXTENSIONS VIA docker-php-ext-install SCRIPT
 RUN docker-php-ext-install \
@@ -59,11 +80,10 @@ RUN docker-php-ext-install \
     xsl \
     zip
 
-# INSTALL XDEBUG
+# INSTALL XDEBUG AND ADD FUNCTIONS TO TURN ON/OFF XDEBUG
 RUN pecl install xdebug-beta
 RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.client_host=\nxdebug.start_with_request=yes\nxdebug.mode=develop,debug" >> /usr/local/etc/php/conf.d/xdebug.ini'
 
-# INSTALL XDEBUG AND ADD FUNCTIONS TO TURN ON/OFF XDEBUG
 COPY xoff.sh /usr/bin/xoff
 COPY xon.sh /usr/bin/xon
 
@@ -73,16 +93,23 @@ RUN set -x \
     && mv /usr/local/etc/php/conf.d/xdebug.ini /usr/local/etc/php/conf.d/xdebug.off \
     && echo 'PS1="[\$(test -e /usr/local/etc/php/conf.d/xdebug.off && echo XOFF || echo XON)] $HC$FYEL[ $FBLE${debian_chroot:+($debian_chroot)}\u$FYEL: $FBLE\w $FYEL]\\$ $RS"' | tee /etc/bash.bashrc /etc/skel/.bashrc;
 
-# Install blackfire extension
-RUN apt-get install -y wget gnupg
+# INSTALL BLACKFIRE EXTENSION
 RUN wget -q -O - https://packages.blackfire.io/gpg.key | apt-key add - \
     && echo "deb http://packages.blackfire.io/debian any main" | tee /etc/apt/sources.list.d/blackfire.list \
     && apt-get update \
-    && apt-get install -y blackfire-agent
+    && apt-get install -y blackfire-agent \
+    && apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# INSTALL MONGODB
-RUN pecl install mongodb
-RUN bash -c 'echo extension=mongodb.so > /usr/local/etc/php/conf.d/mongodb.ini'
+# INSTALL BLACKFIRE CLIENT
+RUN version=$(php -r "echo PHP_MAJOR_VERSION.PHP_MINOR_VERSION;") \
+    && mkdir -p /tmp/blackfire \
+    && curl -A "Docker" -L https://blackfire.io/api/v1/releases/client/linux_static/amd64 | tar zxp -C /tmp/blackfire \
+    && curl -A "Docker" -o /tmp/blackfire-probe.tar.gz -D - -L -s https://blackfire.io/api/v1/releases/probe/php/linux/amd64/$version \
+    && tar zxpf /tmp/blackfire-probe.tar.gz -C /tmp/blackfire \
+    && mv /tmp/blackfire/blackfire-*.so $(php -r "echo ini_get ('extension_dir');")/blackfire.so \
+    && printf "extension=blackfire.so\nblackfire.agent_socket=tcp://blackfire:8707\n" > $PHP_INI_DIR/conf.d/blackfire.ini \
+    && mv /tmp/blackfire/blackfire /usr/bin/blackfire \
+    && rm -rf /tmp/blackfire /tmp/blackfire-probe.tar.gz
 
 # COMPOSER
 ENV COMPOSER_HOME /usr/local/composer
@@ -94,13 +121,6 @@ RUN echo "export COMPOSER_HOME=/usr/local/composer" >> /etc/bash.bashrc
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER 1
-
-# DOWNLOAD SYMFONY INSTALLER
-RUN wget https://get.symfony.com/cli/installer -O - | bash
-RUN mv /root/.symfony/bin/symfony /usr/local/bin/symfony
-
-# CLEAN APT AND TMP
-RUN apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # COPY PHP.INI SUITABLE FOR DEVELOPMENT
 COPY php.ini.development /usr/local/etc/php/php.ini
@@ -133,3 +153,28 @@ RUN chown $USER_LOGIN:$USER_LOGIN /usr/local/composer -R
 # SYMFONY TWEAK
 RUN echo "alias sf='bin/console'" >> $HOME_DIR/.bashrc
 
+# INSTALL GOOGLE CHROME
+COPY lib/google-chrome-stable_90.0.4430.72-1_amd64.deb /tmp/google-chrome-stable_90.0.4430.72-1_amd64.deb
+RUN dpkg -i /tmp/google-chrome-stable_90.0.4430.72-1_amd64.deb
+
+# INSTALL wkhtmltopdf strict 0.12.4 version, 0.12.5 does not exist in github, 0.12.6 break styles in certificates
+RUN OLD_DIR=$(pwd) && \
+    mkdir wkhtmltopdf-temp && \
+    cd wkhtmltopdf-temp && \
+    wget https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.4/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz && \
+    tar -xf wk* && \
+    cp wkhtmltox/bin/wkhtmltopdf $(which wkhtmltopdf) && \
+    cp wkhtmltox/bin/wkhtmltoimage $(which wkhtmltoimage) && \
+    cd $OLD_DIR && \
+    rm -rf wkhtmltopdf-temp
+
+
+# INSTALL POSTGRES FOR PG_DUMP IN TESTS
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
+RUN apt-get update && \
+    apt-get install -y \
+    gnupg2 \
+    postgresql-15  && \
+    apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
