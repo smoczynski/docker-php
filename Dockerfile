@@ -168,6 +168,8 @@ RUN OLD_DIR=$(pwd) && \
     cd $OLD_DIR && \
     rm -rf wkhtmltopdf-temp
 
+# INSTALL DEVELOPMENT UTILS FOR COVERAGE
+RUN pecl install pcov && echo "extension=pcov.so" > /usr/local/etc/php/conf.d/pcov.ini
 
 # INSTALL POSTGRES FOR PG_DUMP IN TESTS
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list
