@@ -1,7 +1,4 @@
-FROM smokarz/php:8.3-v1
-
-RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.client_host=\nxdebug.start_with_request=yes\nxdebug.mode=coverage" >> /usr/local/etc/php/conf.d/xdebug.ini'
-RUN mv /usr/local/etc/php/conf.d/xdebug.off /usr/local/etc/php/conf.d/xdebug.ini
+FROM smokarz/php:8.3-v2
 
 RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash && \
     . /root/.bashrc && \
