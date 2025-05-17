@@ -1,8 +1,5 @@
-FROM php:8.3-fpm
+FROM php:8.4-fpm
 
-MAINTAINER Radek Smoczynski <radek.smoczynski@gmail.com>
-
-RUN echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/debian.list
 
 RUN apt-get update && apt-get install -y \
     # for zip ext
@@ -49,39 +46,20 @@ RUN apt-get update && apt-get install -y \
     # google chrome dep end
     wkhtmltopdf \
     libxkbcommon0 \
+    gzip \
+    unzip \
+    ca-certificates \
     supervisor && \
     apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # INSTALL PHP EXTENSIONS VIA docker-php-ext-install SCRIPT
 RUN docker-php-ext-install \
-    bcmath \
-    calendar \
-    ctype \
-    dba \
-    dom \
-    exif \
-    fileinfo \
-    ftp \
-    gettext \
     gd \
-    iconv \
-    intl \
-    mbstring \
-    opcache \
-    pcntl \
-    pdo \
     pdo_pgsql \
-    pdo_mysql \
-    posix \
-    session \
-    simplexml \
-    soap \
-    sockets \
-    xsl \
     zip
 
 # INSTALL XDEBUG AND ADD FUNCTIONS TO TURN ON/OFF XDEBUG
-RUN pecl install xdebug-beta
+RUN pecl install xdebug-3.4.3
 RUN bash -c 'echo -e "\n[xdebug]\nzend_extension=xdebug.so\nxdebug.client_host=\nxdebug.start_with_request=yes\nxdebug.mode=develop,debug" >> /usr/local/etc/php/conf.d/xdebug.ini'
 
 COPY xoff.sh /usr/bin/xoff
@@ -94,25 +72,32 @@ RUN set -x \
     && echo 'PS1="[\$(test -e /usr/local/etc/php/conf.d/xdebug.off && echo XOFF || echo XON)] $HC$FYEL[ $FBLE${debian_chroot:+($debian_chroot)}\u$FYEL: $FBLE\w $FYEL]\\$ $RS"' | tee /etc/bash.bashrc /etc/skel/.bashrc;
 
 # INSTALL BLACKFIRE EXTENSION
-RUN wget -q -O - https://packages.blackfire.io/gpg.key | apt-key add - \
-    && echo "deb http://packages.blackfire.io/debian any main" | tee /etc/apt/sources.list.d/blackfire.list \
-    && apt-get update \
-    && apt-get install -y blackfire-agent \
-    && apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ARG ARCH=amd64            # arm64 dla Apple Silicon
+RUN set -eux; \
+    mkdir -p /tmp/bf-cli; \
+    curl -fsSL -A "Docker" \
+      "https://blackfire.io/api/v1/releases/cli/linux/${ARCH}" \
+      | tar -xz -C /tmp/bf-cli; \
+    mv /tmp/bf-cli/blackfire /usr/local/bin/blackfire; \
+    chmod +x /usr/local/bin/blackfire; \
+    rm -rf /tmp/bf-cli
 
-# INSTALL BLACKFIRE CLIENT
-RUN version=$(php -r "echo PHP_MAJOR_VERSION.PHP_MINOR_VERSION;") \
-    && mkdir -p /tmp/blackfire \
-    && curl -A "Docker" -L https://blackfire.io/api/v1/releases/client/linux_static/amd64 | tar zxp -C /tmp/blackfire \
-    && curl -A "Docker" -o /tmp/blackfire-probe.tar.gz -D - -L -s https://blackfire.io/api/v1/releases/probe/php/linux/amd64/$version \
-    && tar zxpf /tmp/blackfire-probe.tar.gz -C /tmp/blackfire \
-    && mv /tmp/blackfire/blackfire-*.so $(php -r "echo ini_get ('extension_dir');")/blackfire.so \
-    && printf "extension=blackfire.so\nblackfire.agent_socket=tcp://blackfire:8707\n" > $PHP_INI_DIR/conf.d/blackfire.ini \
-    && mv /tmp/blackfire/blackfire /usr/bin/blackfire \
-    && rm -rf /tmp/blackfire /tmp/blackfire-probe.tar.gz
+RUN set -eux; \
+    PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.PHP_MINOR_VERSION;')"; \
+    PROBE_DEST="$(php -r 'echo ini_get("extension_dir");')/blackfire.so"; \
+    curl -fsSL -A "Docker" \
+      "https://blackfire.io/api/v1/releases/probe/php/linux/${ARCH}/${PHP_VER}" \
+      -o /tmp/bf-probe.tgz; \
+    tar -xzf /tmp/bf-probe.tgz -C /tmp; \
+    mv /tmp/blackfire-*.so "$PROBE_DEST"; \
+    echo "extension=blackfire.so" > "$PHP_INI_DIR/conf.d/99-blackfire.ini"; \
+    rm -rf /tmp/bf-probe.tgz
+
+# (opcjonalny test wersji – możesz skasować)
+RUN blackfire version && php -m | grep blackfire
 
 # COMPOSER
-ENV COMPOSER_HOME /usr/local/composer
+ENV COMPOSER_HOME=/usr/local/composer
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
 RUN php composer-setup.php --install-dir=/usr/bin --filename=composer
 RUN rm composer-setup.php
@@ -120,20 +105,16 @@ RUN bash -c 'echo -e "{ \"config\" : { \"bin-dir\" : \"/usr/local/bin\" } }\n" >
 RUN echo "export COMPOSER_HOME=/usr/local/composer" >> /etc/bash.bashrc
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
-ENV COMPOSER_ALLOW_SUPERUSER 1
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # COPY PHP.INI SUITABLE FOR DEVELOPMENT
-COPY php.ini.development /usr/local/etc/php/php.ini
+COPY php.ini /usr/local/etc/php/php.ini
+COPY php-fixture.ini /usr/local/etc/php/php-fixture.ini
 
 # CREATE PHP.INI FOR CLI AND TWEAK IT
 RUN cp /usr/local/etc/php/php.ini /usr/local/etc/php/php-cli.ini && \
     sed -i "s|memory_limit.*|memory_limit = -1|" /usr/local/etc/php/php-cli.ini
 
-# TWEAK MAIN PHP.INI CONFIG FILE
-RUN sed -i "s|upload_max_filesize.*|upload_max_filesize = 128M|" /usr/local/etc/php/php.ini && \
-    sed -i "s|post_max_size.*|post_max_size = 128M|" /usr/local/etc/php/php.ini && \
-    sed -i "s|max_execution_time.*|max_execution_time = 300|" /usr/local/etc/php/php.ini && \
-    sed -i "s|memory_limit.*|memory_limit = 3048M|" /usr/local/etc/php/php.ini
 
 # PREPARE FILE FOR LOGS
 RUN mkdir -p /var/log/php-fpm
@@ -169,14 +150,27 @@ RUN OLD_DIR=$(pwd) && \
     rm -rf wkhtmltopdf-temp
 
 # INSTALL DEVELOPMENT UTILS FOR COVERAGE
-RUN pecl install pcov && echo "extension=pcov.so" > /usr/local/etc/php/conf.d/pcov.ini
+RUN pecl install pcov && echo "extension=pcov.so\npcov.enabled=0" > /usr/local/etc/php/conf.d/pcov.ini
 
 # INSTALL POSTGRES FOR PG_DUMP IN TESTS
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 
 RUN apt-get update && \
     apt-get install -y \
     gnupg2 \
-    postgresql-15  && \
+    postgresql-client-15  && \
     apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# APPLY HARDENING
+RUN mkdir -p /opt/audit && \
+    cd /opt/audit && \
+    git clone https://github.com/ovh/debian-cis.git && \
+    cd debian-cis && \
+    cp debian/default /etc/default/cis-hardening && \
+    sed -i "s#CIS_LIB_DIR=.*#CIS_LIB_DIR='$(pwd)'/lib#" /etc/default/cis-hardening && \
+    sed -i "s#CIS_CHECKS_DIR=.*#CIS_CHECKS_DIR='$(pwd)'/bin/hardening#" /etc/default/cis-hardening && \
+    sed -i "s#CIS_CONF_DIR=.*#CIS_CONF_DIR='$(pwd)'/etc#" /etc/default/cis-hardening && \
+    sed -i "s#CIS_TMP_DIR=.*#CIS_TMP_DIR='$(pwd)'/tmp#" /etc/default/cis-hardening && \
+    ./bin/hardening.sh --set-hardening-level 1 && \
+    ./bin/hardening.sh --apply
