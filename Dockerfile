@@ -163,14 +163,9 @@ RUN apt-get update && \
     apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # APPLY HARDENING
-RUN mkdir -p /opt/audit && \
-    cd /opt/audit && \
-    git clone https://github.com/ovh/debian-cis.git && \
-    cd debian-cis && \
-    cp debian/default /etc/default/cis-hardening && \
-    sed -i "s#CIS_LIB_DIR=.*#CIS_LIB_DIR='$(pwd)'/lib#" /etc/default/cis-hardening && \
-    sed -i "s#CIS_CHECKS_DIR=.*#CIS_CHECKS_DIR='$(pwd)'/bin/hardening#" /etc/default/cis-hardening && \
-    sed -i "s#CIS_CONF_DIR=.*#CIS_CONF_DIR='$(pwd)'/etc#" /etc/default/cis-hardening && \
-    sed -i "s#CIS_TMP_DIR=.*#CIS_TMP_DIR='$(pwd)'/tmp#" /etc/default/cis-hardening && \
-    ./bin/hardening.sh --set-hardening-level 1 && \
-    ./bin/hardening.sh --apply
+RUN set -eux; \
+    git clone --depth 1 --branch v4.1-5 https://github.com/ovh/debian-cis.git /opt/cis-hardening && \
+    cp /opt/cis-hardening/debian/default /etc/default/cis-hardening && \
+    /opt/cis-hardening/bin/hardening.sh --set-version debian_12 && \
+    /opt/cis-hardening/bin/hardening.sh --set-hardening-level 1 && \
+    /opt/cis-hardening/bin/hardening.sh --apply
