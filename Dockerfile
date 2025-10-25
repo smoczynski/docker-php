@@ -162,6 +162,9 @@ RUN apt-get update && \
     postgresql-client-15  && \
     apt-get clean && apt-get autoremove && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# add Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
 # APPLY HARDENING
 RUN set -eux; \
     git clone --depth 1 --branch v4.1-5 https://github.com/ovh/debian-cis.git /opt/cis-hardening && \
