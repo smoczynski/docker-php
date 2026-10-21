@@ -1,4 +1,5 @@
-FROM php:8.4-fpm-bookworm
+# PHP 8.4.27: critical RCE fixes CVE-2026-109618, CVE-2026-109619 (php.net advisory 2026-10-21)
+FROM php:8.4.27-fpm-bookworm
 
 RUN apt-get update && apt-get install -y \
     # for zip ext
