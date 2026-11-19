@@ -1,4 +1,4 @@
-FROM smokarz/php:8.4-v5
+FROM smokarz/php:8.4-v6
 
 RUN curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash && \
     . /root/.bashrc && \
