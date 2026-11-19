@@ -1,5 +1,5 @@
-# PHP 8.4.27: critical RCE fixes CVE-2026-109618, CVE-2026-109619 (php.net advisory 2026-10-21)
-FROM php:8.4.27-fpm-bookworm
+# PHP 8.4.28: critical fixes (PHP-FPM request smuggling, session RCE/UAF, timezone cache UAF; php.net 2026-11-19)
+FROM php:8.4.28-fpm-bookworm
 
 RUN apt-get update && apt-get install -y \
     # for zip ext
